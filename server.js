@@ -21,12 +21,21 @@ app.use(cors({
 }));
 
 
+
+
 app.use(express.json({limit:"16kb"}))
 app.use(express.urlencoded(
     {extended:true,limit:"16kb"}
 ))
 app.use(express.static("public"))
 app.use(cookieParser())
+
+// API request logging middleware
+app.use((req, res, next) => {
+    const timestamp = new Date().toISOString();
+    console.log(`💀[${timestamp}] ${req.method} ${req.url}💀`);
+    next();
+});
 
 
 // Mock topic of the day
