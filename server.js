@@ -162,6 +162,8 @@ app.use('/auth', authRouter); // Use the auth router for authentication routes
 
 //Routers import
 import userRouter from './routes/user.routes.js'; // Import your user routes
-import topicRouter from './routes/topic.router.js'
+import topicRouter from './routes/topic.router.js';
+import matchmakingRouter from './routes/matchmaking.routes.js';
 app.use('/api/users',userRouter);
 app.use('/api/topic',topicRouter);
+app.use('/api/matchmaking',matchmakingRouter);

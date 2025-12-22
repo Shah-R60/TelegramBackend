@@ -3,6 +3,7 @@ import { User } from "../model/user.models.js";
 import jwt from "jsonwebtoken";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
+import { StreamClient } from '@stream-io/node-sdk';
 
 const registerUser = asyncHandler(async (req ,res)=>{
      // Logic for registering a user
@@ -98,31 +99,105 @@ try {
 }
 })
 
+// ****************************Get Current User***************************************
 
+const getCurrentUser = asyncHandler(async (req, res) => {
+     const user = await User.findById(req.user._id).select('-refreshToken -__v');
+     
+     if (!user) {
+          throw new ApiError(404, "User not found");
+     }
 
+     return res.status(200).json(
+          new ApiResponse(200, user, "User fetched successfully")
+     );
+});
 
+// ****************************Star Management***************************************
 
+const increaseStar = asyncHandler(async (req, res) => {
+     const user = await User.findByIdAndUpdate(
+          req.user._id,
+          { $inc: { stars: 1 } },
+          { new: true }
+     ).select('-refreshToken -__v');
 
+     if (!user) {
+          throw new ApiError(404, "User not found");
+     }
 
+     return res.status(200).json(
+          new ApiResponse(200, { 
+               email: user.email,
+               name: user.name,
+               picture: user.picture,
+               stars: user.stars
+          }, "Star increased successfully")
+     );
+});
 
+const decreaseStar = asyncHandler(async (req, res) => {
+     const user = await User.findById(req.user._id);
+     
+     if (!user) {
+          throw new ApiError(404, "User not found");
+     }
 
+     if (user.stars <= 0) {
+          throw new ApiError(400, "Insufficient stars");
+     }
 
+     user.stars -= 1;
+     await user.save();
 
+     return res.status(200).json(
+          new ApiResponse(200, { 
+               email: user.email,
+               name: user.name,
+               picture: user.picture,
+               stars: user.stars
+          }, "Star decreased successfully")
+     );
+});
 
+// ****************************GetStream Token***************************************
 
+const getStreamToken = asyncHandler(async (req, res) => {
+     const user = await User.findById(req.user._id);
+     
+     if (!user) {
+          throw new ApiError(404, "User not found");
+     }
 
+     // Generate Stream token using jwt with Stream secret
+     const streamToken = jwt.sign(
+          { user_id: user._id.toString() },
+          process.env.STREAM_SECRET_KEY,
+          { expiresIn: '1h' }
+     );
 
-
-
-
-
+     return res.status(200).json(
+          new ApiResponse(200, { 
+               streamToken: streamToken,
+               streamUserId: user._id.toString(),
+               streamApiKey: process.env.STREAM_API_KEY,
+               userName: user.name,
+               userImage: user.picture,
+               userEmail: user.email
+          }, "Stream token generated successfully")
+     );
+});
 
 
 
 
 export {
      logoutUser,
-     refreshAccessToken
+     refreshAccessToken,
+     getCurrentUser,
+     increaseStar,
+     decreaseStar,
+     getStreamToken
 }
 
 export default registerUser;

@@ -21,14 +21,14 @@ router.route("/uploadTopic").post(
      publishTopic
 );
 
-// Get all topics - Public endpoint (no auth required)
-router.route("/getAllTopics").get(getAllTopics);
+// Get all topics - Requires authentication
+router.route("/getAllTopics").get(verifyJWT, getAllTopics);
 
-// Get newest topic - Public endpoint (no auth required)
-router.route("/getNewestTopic").get(getNewestTopic);
+// Get newest topic - Requires authentication
+router.route("/getNewestTopic").get(verifyJWT, getNewestTopic);
 
-// Get topic by ID - Public endpoint (no auth required)
-router.route("/:id").get(getTopicById);
+// Get topic by ID - Requires authentication
+router.route("/:id").get(verifyJWT, getTopicById);
 
 // Update topic
 router.route("/:id").put(

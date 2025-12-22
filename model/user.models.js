@@ -21,6 +21,11 @@ const UserSchema = new mongoose.Schema({
      refreshToken:{
           type:String,
      },
+     stars:{
+          type:Number,
+          default:10,
+          min:0
+     },
      
 },{
      timestamps: true
