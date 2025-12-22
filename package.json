@@ -8,6 +8,7 @@
     "start": "nodemon server.js"
   },
   "dependencies": {
+    "@stream-io/node-sdk": "^0.7.28",
     "axios": "^1.9.0",
     "cloudinary": "^2.6.1",
     "cookie-parser": "^1.4.7",
