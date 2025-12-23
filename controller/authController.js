@@ -96,8 +96,85 @@ const logoutUser = asyncHandler(async (req, res) => {
 
 
 
+// Mobile native Google Sign-In (receives access token directly)
+async function googleLoginMobile(req, res) {
+     try {
+          const { email, name, picture, googleAccessToken } = req.body;
+
+          if (!googleAccessToken || !email) {
+               return res.status(400).json({
+                    success: false,
+                    message: 'Missing required fields'
+               });
+          }
+
+          // Verify token with Google (optional but recommended)
+          const userInfoResponse = await axios.get(
+               `https://www.googleapis.com/oauth2/v1/userinfo?alt=json&access_token=${googleAccessToken}`
+          );
+
+
+
+          
+          if (userInfoResponse.data.email !== email) {
+               return res.status(401).json({
+                    success: false,
+                    message: 'Invalid token'
+               });
+          }
+
+          // Find or create user
+          let user = await User.findOne({ email });
+
+          if (!user) {
+               user = await User.create({
+                    name,
+                    email,
+                    picture,
+               });
+          }
+
+          const Accesstoken = user.generateAccessToken();
+          const refreshToken = user.generateRefreshToken();
+
+          user.refreshToken = refreshToken;
+          await user.save({ validateBeforeSave: false });
+
+          const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
+
+          const options = {
+               httpOnly: true,
+               secure: true,
+               maxAge: 7 * 24 * 60 * 60 * 1000,
+          };
+
+          console.log("Mobile user logged in:", loggedInUser.email);
+
+          return res
+               .status(200)
+               .cookie("accessToken", Accesstoken, options)
+               .cookie("refreshToken", refreshToken, options)
+               .json(
+                    new ApiResponse(200, {
+                         user: loggedInUser,
+                         Accesstoken,
+                         refreshToken
+                    }, "User logged in successfully")
+               );
+
+     } catch (err) {
+          console.error("Mobile Google login error:", err);
+          res.status(500).json({
+               success: false,
+               message: "Internal Server Error",
+               error: err.message
+          });
+     }
+}
+
 export default googleLogin;
 
 export {
-     logoutUser
+     logoutUser,
+     googleLoginMobile
 }
