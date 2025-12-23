@@ -9,6 +9,7 @@ async function googleLogin(req, res) {
      try {
           const { code } = req.query;
           const { tokens } = await oauthClient.getToken(code);
+          console.log("Obtained tokens from Google:", tokens);
           oauthClient.setCredentials(tokens);
           const userInfo = await axios.get(`https://www.googleapis.com/oauth2/v1/userinfo?alt=json&access_token=${tokens.access_token}`);
 
