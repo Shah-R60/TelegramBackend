@@ -7,10 +7,13 @@ import { ApiResponse } from '../utils/ApiResponse.js';
 const joinQueue = asyncHandler(async (req, res) => {
      const userId = req.user._id;
 
+     console.log(`🔵 [JOIN QUEUE] User ${userId} attempting to join queue`);
+
      // Check if user is already in queue
      const existing = await CallQueue.findOne({ user_id: userId });
 
      if (existing) {
+          console.log(`⚠️ [ALREADY IN QUEUE] User ${userId} already in queue with status: ${existing.status}`);
           return res.status(200).json(
                new ApiResponse(200, { 
                     status: 'already_in_queue', 
@@ -19,14 +22,25 @@ const joinQueue = asyncHandler(async (req, res) => {
           );
      }
 
-     // Look for someone waiting in the queue (not this user)
-     const waitingUser = await CallQueue.findOne({
-          status: 'waiting',
-          user_id: { $ne: userId }
-     }).sort({ createdAt: 1 });
+     // Use findOneAndUpdate with atomic operation to prevent race conditions
+     // Try to find and atomically update a waiting user to 'matching' status
+     const waitingUser = await CallQueue.findOneAndUpdate(
+          {
+               status: 'waiting',
+               user_id: { $ne: userId }
+          },
+          {
+               $set: { status: 'matching' } // Temporary status to lock this user
+          },
+          {
+               sort: { createdAt: 1 }, // Oldest first
+               new: false // Return the original document
+          }
+     );
 
      // If someone is waiting, match with them
      if (waitingUser) {
+          console.log(`🤝 [MATCHING] User ${userId} matched with ${waitingUser.user_id}`);
           const callId = `${Date.now()}_${userId.toString().substring(0, 8)}`;
 
           // Update the waiting user to matched
@@ -43,6 +57,8 @@ const joinQueue = asyncHandler(async (req, res) => {
                call_id: callId
           });
 
+          console.log(`✅ [MATCH SUCCESS] Call created: ${callId}`);
+
           return res.status(200).json(
                new ApiResponse(200, {
                     status: 'matched',
@@ -53,6 +69,7 @@ const joinQueue = asyncHandler(async (req, res) => {
           );
      } else {
           // No one waiting, add to queue
+          console.log(`⏳ [WAITING] User ${userId} added to queue`);
           const newEntry = await CallQueue.create({
                user_id: userId,
                status: 'waiting'
