@@ -116,9 +116,16 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 // ****************************Star Management***************************************
 
 const increaseStar = asyncHandler(async (req, res) => {
+     const { amount } = req.body;
+     
+     // Validate amount
+     if (!amount || amount <= 0) {
+          throw new ApiError(400, "Invalid amount. Amount must be greater than 0");
+     }
+
      const user = await User.findByIdAndUpdate(
           req.user._id,
-          { $inc: { stars: 1 } },
+          { $inc: { stars: amount } },
           { new: true }
      ).select('-refreshToken -__v');
 
@@ -128,35 +135,36 @@ const increaseStar = asyncHandler(async (req, res) => {
 
      return res.status(200).json(
           new ApiResponse(200, { 
-               email: user.email,
-               name: user.name,
-               picture: user.picture,
                stars: user.stars
-          }, "Star increased successfully")
+          }, `${amount} star(s) increased successfully`)
      );
 });
 
 const decreaseStar = asyncHandler(async (req, res) => {
+     const { amount } = req.body;
+     
+     // Validate amount
+     if (!amount || amount <= 0) {
+          throw new ApiError(400, "Invalid amount. Amount must be greater than 0");
+     }
+
      const user = await User.findById(req.user._id);
      
      if (!user) {
           throw new ApiError(404, "User not found");
      }
 
-     if (user.stars <= 0) {
-          throw new ApiError(400, "Insufficient stars");
+     if (user.stars < amount) {
+          throw new ApiError(400, `Insufficient stars. You have ${user.stars} stars but need ${amount}`);
      }
 
-     user.stars -= 1;
+     user.stars -= amount;
      await user.save();
 
      return res.status(200).json(
           new ApiResponse(200, { 
-               email: user.email,
-               name: user.name,
-               picture: user.picture,
                stars: user.stars
-          }, "Star decreased successfully")
+          }, `${amount} star(s) decreased successfully`)
      );
 });
 
