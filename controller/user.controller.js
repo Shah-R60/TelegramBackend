@@ -65,9 +65,9 @@ try {
     // console.log("reach");
     // console.log("decoded token",decodedtoken);
   
-    const user =await User.findById(decodedtoken?._id)
+    const user = await User.findById(decodedtoken?._id)
     if(!user){
-      throw new apierror(401,"unauthorized request");
+      throw new ApiError(401,"unauthorized request");
     }
   
     if(incomingrefreshtoken!==user?.refreshToken)
@@ -81,16 +81,20 @@ try {
     }
   
     const accessToken = user.generateAccessToken();
-     const newrefreshToken = user.generateRefreshToken();
+    const newrefreshToken = user.generateRefreshToken();
+    
+    // Save new refresh token to database
+    user.refreshToken = newrefreshToken;
+    await user.save({ validateBeforeSave: false });
      
     return res
     .status(200)
     .cookie("accessToken",accessToken,options)
-    .cookie("refreshToken",options)
+    .cookie("refreshToken",newrefreshToken,options)
     .json(
       new ApiResponse(
         200,
-        {accessToken,refreshAccessToken:newrefreshToken},
+        {accessToken,refreshToken:newrefreshToken},
         "Access token refreshed"
     )
     )
