@@ -169,3 +169,7 @@ app.use('/api/users',userRouter);
 app.use('/api/topic',topicRouter);
 app.use('/api/matchmaking',matchmakingRouter);
 app.use('/api/stream',streamWebhookRouter);
+
+
+import musicRouter from './routes/music.router.js';
+app.use('/api/music',musicRouter);
