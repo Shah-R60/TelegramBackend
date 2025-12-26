@@ -16,4 +16,4 @@ const getLatestMusic = asyncHandler(async (req, res) => {
      );
 });
 
-export { uploadMusic, getLatestMusic };
+export {  getLatestMusic };
