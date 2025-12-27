@@ -65,7 +65,7 @@ try {
     // console.log("reach");
     // console.log("decoded token",decodedtoken);
   
-    const user = await User.findById(decodedtoken?._id)
+          const user = await User.findById(decodedtoken?.id)
     if(!user){
       throw new ApiError(401,"unauthorized request");
     }
