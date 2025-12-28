@@ -173,3 +173,6 @@ app.use('/api/stream',streamWebhookRouter);
 
 import musicRouter from './routes/music.router.js';
 app.use('/api/music',musicRouter);
+
+import reportRouter from './routes/report.routes.js';
+app.use('/api/reports',reportRouter);

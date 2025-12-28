@@ -26,6 +26,65 @@ const UserSchema = new mongoose.Schema({
           default:10,
           min:0
      },
+     // Report and Ban System
+     reportCount:{
+          type:Number,
+          default:0,
+          min:0
+     },
+     reportsGiven:{
+          type:Number,
+          default:0,
+          min:0
+     },
+     isBanned:{
+          type:Boolean,
+          default:false
+     },
+     banExpiresAt:{
+          type:Date,
+          default:null
+     },
+     banReason:{
+          type:String,
+          default:null
+     },
+     weeklyBanCount:{
+          type:Number,
+          default:0,
+          min:0
+     },
+     weeklyBanResetDate:{
+          type:Date,
+          default:null
+     },
+     probationExpiresAt:{
+          type:Date,
+          default:null
+     },
+     banHistory:[{
+          bannedAt:{
+               type:Date,
+               required:true
+          },
+          banDuration:{
+               type:String,
+               enum:['24h','7d'],
+               required:true
+          },
+          reason:{
+               type:String,
+               required:true
+          },
+          reportCount:{
+               type:Number,
+               required:true
+          }
+     }],
+     lastReportDate:{
+          type:Date,
+          default:null
+     }
      
 },{
      timestamps: true

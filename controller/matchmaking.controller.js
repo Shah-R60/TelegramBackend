@@ -1,13 +1,38 @@
 import { CallQueue } from '../model/callQueue.models.js';
+import { User } from '../model/user.models.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
+
+// Helper: Check and clear expired bans
+const checkBanStatus = async (user) => {
+     const now = new Date();
+     if (user.isBanned && user.banExpiresAt && user.banExpiresAt < now) {
+          user.isBanned = false;
+          user.banExpiresAt = null;
+          user.banReason = null;
+          user.reportCount = 0;
+          await user.save();
+          console.log(`✅ [BAN EXPIRED] Cleared ban for user ${user._id}`);
+          return false;
+     }
+     return user.isBanned;
+};
 
 // Join the matchmaking queue
 const joinQueue = asyncHandler(async (req, res) => {
      const userId = req.user._id;
 
      console.log(`🔵 [JOIN QUEUE] User ${userId} attempting to join queue`);
+
+     // Check if user is banned
+     const user = await User.findById(userId);
+     const isBanned = await checkBanStatus(user);
+     
+     if (isBanned) {
+          const timeRemaining = Math.ceil((user.banExpiresAt - new Date()) / (60 * 1000)); // minutes
+          throw new ApiError(403, `You are temporarily banned from calling. Time remaining: ${timeRemaining} minutes. Reason: ${user.banReason}`);
+     }
 
      // Check if user is already in queue
      const existing = await CallQueue.findOne({ user_id: userId });
