@@ -3,6 +3,7 @@ import { User } from "../model/user.models.js";
 import { Report } from "../model/report.models.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
+import { io, userSockets } from "../server.js";
 
 // Helper: Check and reset weekly ban count if needed
 const checkAndResetWeeklyBans = async (user) => {
@@ -177,6 +178,27 @@ const submitReport = asyncHandler(async (req, res) => {
     if (banResult.banned) {
         report.actionTaken = banResult.duration === '24h' ? '24h_ban' : '7d_ban';
         await report.save();
+    }
+    
+    // Notify reported user via Socket.IO if they're online
+    const reportedUserSocketId = userSockets.get(reportedUserId);
+    if (reportedUserSocketId && io) {
+        const eventData = {
+            reportCount: reportedUser.reportCount,
+            weeklyBanCount: reportedUser.weeklyBanCount,
+            inProbation: isInProbation(reportedUser),
+            ...banResult
+        };
+        
+        if (banResult.banned) {
+            io.to(reportedUserSocketId).emit('user_banned', eventData);
+            console.log(`🔔 [SOCKET] Sent ban notification to user ${reportedUserId}`);
+        } else {
+            io.to(reportedUserSocketId).emit('user_reported', eventData);
+            console.log(`🔔 [SOCKET] Sent report warning to user ${reportedUserId} (count: ${reportedUser.reportCount})`);
+        }
+    } else {
+        console.log(`ℹ️ [SOCKET] User ${reportedUserId} is offline, skipping real-time notification`);
     }
     
     return res.status(200).json(

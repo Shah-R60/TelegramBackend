@@ -67,6 +67,8 @@ const io = new Server(server, {
 let waitingUser = null;
 const partners = {}; // socket.id -> partnerId
 
+// Track authenticated users for report notifications
+const userSockets = new Map(); // userId -> socketId
 
 function broadcastUserCount() {
   io.emit('user_count', { count: io.engine.clientsCount });
@@ -76,6 +78,13 @@ function broadcastUserCount() {
 io.on('connection', (socket) => {
   broadcastUserCount();
   console.log('User connected:', socket.id);
+  
+  // Track authenticated user
+  const userId = socket.handshake.auth?.userId;
+  if (userId) {
+    userSockets.set(userId, socket.id);
+    console.log(`✅ [SOCKET] User ${userId} connected with socket ${socket.id}`);
+  }
 
   socket.on('find_partner', () => {
     if (waitingUser && waitingUser !== socket.id) {
@@ -127,10 +136,21 @@ io.on('connection', (socket) => {
       delete partners[partnerId];
       delete partners[socket.id];
     }
+    
+    // Remove from user socket tracking
+    const userId = socket.handshake.auth?.userId;
+    if (userId && userSockets.get(userId) === socket.id) {
+      userSockets.delete(userId);
+      console.log(`❌ [SOCKET] User ${userId} disconnected`);
+    }
+    
     broadcastUserCount();
     console.log('User disconnected:', socket.id);
   });
 });
+
+// Export io and userSockets for use in controllers
+export { io, userSockets };
 
 
 // *******************************************************************************************************************************************
