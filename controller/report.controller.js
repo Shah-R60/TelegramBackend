@@ -122,7 +122,7 @@ const applyAutoBan = async (user) => {
 
 // Submit a report
 const submitReport = asyncHandler(async (req, res) => {
-    const { reportedUserId, reason } = req.body;
+    const { reportedUserId, reason, source } = req.body;
     const reporterId = req.user._id;
     
     // Validation
@@ -189,6 +189,11 @@ const submitReport = asyncHandler(async (req, res) => {
             inProbation: isInProbation(reportedUser),
             ...banResult
         };
+
+        // Only forward known sources to clients (used for navigation/UX decisions)
+        if (source === 'in_call' || source === 'after_call') {
+            eventData.source = source;
+        }
         
         if (banResult.banned) {
             io.to(reportedUserSocketId).emit('user_banned', eventData);
