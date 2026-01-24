@@ -51,7 +51,7 @@ const publishTopic = asyncHandler(async (req, res) => {
     const processedDescription = await Promise.all(
         parsedDescription.map(async (block, blockIndex) => {
             // Validate block structure
-            if (!block.type || !['text', 'image', 'video'].includes(block.type)) {
+            if (!block.type || !['text', 'image', 'video', 'youtube'].includes(block.type)) {
                 throw new ApiError(400, `Invalid block type at index ${blockIndex}`);
             }
 
@@ -63,6 +63,25 @@ const publishTopic = asyncHandler(async (req, res) => {
                 return {
                     type: block.type,
                     content: block.content.trim(),
+                    order: block.order || blockIndex
+                };
+            }
+
+            if (block.type === 'youtube') {
+                const url = (block.content || '').trim();
+
+                if (!url) {
+                    throw new ApiError(400, `YouTube URL required at block ${blockIndex}`);
+                }
+
+                const isYouTubeUrl = /^(https?:\/\/)?(www\.|m\.)?(youtube\.com\/watch\?v=|youtu\.be\/)/i.test(url);
+                if (!isYouTubeUrl) {
+                    throw new ApiError(400, `Invalid YouTube URL at block ${blockIndex}`);
+                }
+
+                return {
+                    type: block.type,
+                    content: url,
                     order: block.order || blockIndex
                 };
             }

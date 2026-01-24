@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const ContentBlockSchema = new mongoose.Schema({
      type: {
           type: String,
-          enum: ['text', 'image', 'video'],
+          enum: ['text', 'image', 'video', 'youtube'],
           required: true
      },
      content: {
