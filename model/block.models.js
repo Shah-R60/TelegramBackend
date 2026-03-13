@@ -32,4 +32,7 @@ const BlockSchema = new mongoose.Schema(
 BlockSchema.index({ blockerId: 1, blockedUserId: 1 }, { unique: true });
 BlockSchema.index({ blockedUserId: 1, createdAt: -1 });
 
+// Auto-expire block entries after 24 hours (daily reset)
+BlockSchema.index({ createdAt: 1 }, { expireAfterSeconds: 86400 });
+
 export const Block = mongoose.model('Block', BlockSchema);

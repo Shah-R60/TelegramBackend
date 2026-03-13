@@ -1,8 +1,15 @@
 import { CallQueue } from '../model/callQueue.models.js';
 import { User } from '../model/user.models.js';
+import { Block } from '../model/block.models.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
+
+// Helper: Get list of user IDs that userId has blocked
+const getBlockedIds = async (userId) => {
+     const blocks = await Block.find({ blockerId: userId }).select('blockedUserId').lean();
+     return blocks.map(b => b.blockedUserId);
+};
 
 // Helper: Check and clear expired bans
 const checkBanStatus = async (user) => {
@@ -72,12 +79,18 @@ const joinQueue = asyncHandler(async (req, res) => {
           }
      }
 
+     // Fetch block list before searching queue — blocked users will be excluded
+     const blockedIds = await getBlockedIds(userId);
+
      // Use findOneAndUpdate with atomic operation to prevent race conditions
      // Try to find and atomically update a waiting user to 'matching' status
      const waitingUser = await CallQueue.findOneAndUpdate(
           {
                status: 'waiting',
-               user_id: { $ne: userId }
+               user_id: { 
+                    $ne: userId,          // exclude self
+                    $nin: blockedIds      // exclude users blocked by A
+               }
           },
           {
                $set: { status: 'matching' } // Temporary status to lock this user
@@ -169,10 +182,16 @@ const checkStatus = asyncHandler(async (req, res) => {
      // If we are waiting, try to find a match (active matching during polling)
      // This handles the case where two users joined simultaneously and both ended up waiting
      if (queueEntry.status === 'waiting') {
+          // Re-fetch block list for polling match attempt as well
+          const blockedIds = await getBlockedIds(userId);
+
           const waitingUser = await CallQueue.findOneAndUpdate(
                {
                     status: 'waiting',
-                    user_id: { $ne: userId }
+                    user_id: { 
+                         $ne: userId,      // exclude self
+                         $nin: blockedIds  // exclude users blocked by A
+                    }
                },
                {
                     $set: { status: 'matching' }
