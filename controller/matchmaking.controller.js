@@ -5,10 +5,24 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 
-// Helper: Get list of user IDs that userId has blocked
+// Helper: Get list of user IDs to exclude from matching.
+// Checks BOTH directions:
+//   1. Users that userId has blocked (A → B)
+//   2. Users that have blocked userId (B → A)
+// This ensures if A blocks B, neither A nor B can be matched with each other.
 const getBlockedIds = async (userId) => {
-     const blocks = await Block.find({ blockerId: userId }).select('blockedUserId').lean();
-     return blocks.map(b => b.blockedUserId);
+     const blocks = await Block.find({
+          $or: [
+               { blockerId: userId },       // users that I blocked
+               { blockedUserId: userId }     // users that blocked me
+          ]
+     }).select('blockerId blockedUserId').lean();
+
+     return blocks.map(b =>
+          b.blockerId.toString() === userId.toString()
+               ? b.blockedUserId   // I blocked them → exclude them
+               : b.blockerId       // they blocked me → exclude them
+     );
 };
 
 // Helper: Check and clear expired bans
