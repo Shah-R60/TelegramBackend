@@ -196,3 +196,6 @@ app.use('/api/music',musicRouter);
 
 import reportRouter from './routes/report.routes.js';
 app.use('/api/reports',reportRouter);
+
+import blockRouter from './routes/block.routes.js';
+app.use('/api/blocks', blockRouter);
