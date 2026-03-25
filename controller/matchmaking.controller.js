@@ -4,6 +4,35 @@ import { Block } from '../model/block.models.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
+import { io, userSockets } from '../server.js';
+
+const MATCH_FOUND_EVENT = 'match_found';
+
+const notifyMatchFound = ({ userAId, userBId, callId }) => {
+     if (!io) return;
+
+     const payloadForA = {
+          callId,
+          matchedWith: userBId.toString(),
+          matchedAt: new Date().toISOString(),
+     };
+     const payloadForB = {
+          callId,
+          matchedWith: userAId.toString(),
+          matchedAt: new Date().toISOString(),
+     };
+
+     const socketA = userSockets.get(userAId.toString());
+     const socketB = userSockets.get(userBId.toString());
+
+     if (socketA) {
+          io.to(socketA).emit(MATCH_FOUND_EVENT, payloadForA);
+     }
+
+     if (socketB) {
+          io.to(socketB).emit(MATCH_FOUND_EVENT, payloadForB);
+     }
+};
 
 // Helper: Get list of user IDs to exclude from matching.
 // Checks BOTH directions:
@@ -67,6 +96,12 @@ const joinQueue = asyncHandler(async (req, res) => {
                const partner = await CallQueue.findOne({ user_id: existing.matched_with });
                
                if (partner && partner.status === 'matched' && partner.matched_with === userId.toString()) {
+                    notifyMatchFound({
+                         userAId: userId,
+                         userBId: existing.matched_with,
+                         callId: existing.call_id,
+                    });
+
                     // Match is valid, return it
                     return res.status(200).json(
                          new ApiResponse(200, { 
@@ -141,6 +176,12 @@ const joinQueue = asyncHandler(async (req, res) => {
                status: 'matched',
                matched_with: waitingUser.user_id,
                call_id: callId
+          });
+
+          notifyMatchFound({
+               userAId: userId,
+               userBId: waitingUser.user_id,
+               callId,
           });
 
           console.log(`✅ [MATCH SUCCESS] Call created: ${callId}`);
@@ -236,6 +277,12 @@ const checkStatus = asyncHandler(async (req, res) => {
                queueEntry.matched_with = waitingUser.user_id;
                queueEntry.call_id = callId;
                await queueEntry.save();
+
+               notifyMatchFound({
+                    userAId: userId,
+                    userBId: waitingUser.user_id,
+                    callId,
+               });
 
                return res.status(200).json(
                     new ApiResponse(200, {
