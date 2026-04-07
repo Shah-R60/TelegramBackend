@@ -25,6 +25,10 @@ const notifyMatchFound = ({ userAId, userBId, callId }) => {
      const socketA = userSockets.get(userAId.toString());
      const socketB = userSockets.get(userBId.toString());
 
+     console.log(
+          `🔔 [MATCH SOCKET] callId=${callId} userA=${userAId.toString()} socketA=${socketA || 'offline'} userB=${userBId.toString()} socketB=${socketB || 'offline'}`
+     );
+
      if (socketA) {
           io.to(socketA).emit(MATCH_FOUND_EVENT, payloadForA);
      }

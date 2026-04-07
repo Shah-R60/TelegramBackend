@@ -8,6 +8,7 @@ import connectDB from './db/index.js';
 import cookieParser from 'cookie-parser';
 import exp from 'constants';
 import authRouter from './routes/authRouters.js'; // Import your auth routes
+import { CallQueue } from './model/callQueue.models.js';
 // Load environment variables
 
 
@@ -75,6 +76,35 @@ function broadcastUserCount() {
 }
 // Broadcast user count on connection and disconnection
 
+const emitPendingMatchForUser = async ({ socket, userId, reason }) => {
+  if (!userId) return;
+
+  try {
+    const queueEntry = await CallQueue.findOne({
+      user_id: userId,
+      status: 'matched',
+    })
+      .select('call_id matched_with updatedAt')
+      .lean();
+
+    if (!queueEntry?.call_id || !queueEntry?.matched_with) {
+      return;
+    }
+
+    socket.emit('match_found', {
+      callId: queueEntry.call_id,
+      matchedWith: queueEntry.matched_with.toString(),
+      matchedAt: queueEntry.updatedAt
+        ? new Date(queueEntry.updatedAt).toISOString()
+        : new Date().toISOString(),
+    });
+
+    console.log(`🔁 [MATCH REPLAY] reason=${reason} user=${userId} callId=${queueEntry.call_id}`);
+  } catch (error) {
+    console.log(`⚠️ [MATCH REPLAY] Failed for user=${userId} reason=${reason}`);
+  }
+};
+
 io.on('connection', (socket) => {
   broadcastUserCount();
   console.log('User connected:', socket.id);
@@ -84,7 +114,12 @@ io.on('connection', (socket) => {
   if (userId) {
     userSockets.set(userId, socket.id);
     console.log(`✅ [SOCKET] User ${userId} connected with socket ${socket.id}`);
+    void emitPendingMatchForUser({ socket, userId, reason: 'connect' });
   }
+
+  socket.on('match_replay_request', () => {
+    void emitPendingMatchForUser({ socket, userId, reason: 'replay_request' });
+  });
 
   socket.on('find_partner', () => {
     if (waitingUser && waitingUser !== socket.id) {
